@@ -1,4 +1,4 @@
-# TOML for iyi, ported from the Crystal shard crystal-community/toml.cr
+# TOML for ris, ported from the Crystal shard crystal-community/toml.cr
 # 0.8.1, which reads TOML v0.5.0; the Crystal code is kept in
 # archive/crystal/.
 #
@@ -21,6 +21,8 @@
 #     do not compare equal to it.
 module toml
 
+import std/int
+import std/float
 import std/indexable
 import std/text
 import std/time::{Time}
@@ -30,32 +32,40 @@ pub struct TOML
   # A TOML Table. Just a convenience alias.
   alias Table = Hash(String, TOML::Any)
 
-  # Parses a string.
+  # Owns its scratch scope; the returned tree contains only retained values.
   def self.parse(input : String) : Table
-    Parser.new(input).parse
+    result = Table.new
+    tape do
+      result = Parser.new(input).parse
+    end
+    result
   end
 
   # A TOML basic string, "...", that `TOML.parse` reads back as *value*.
   def self.quote(value : String) : String
-    String.build do |io|
-      io << '"'
-      value.each_char do |c|
-        case c
-        when '"'  then io << "\\\""
-        when '\\' then io << "\\\\"
-        when '\n' then io << "\\n"
-        when '\r' then io << "\\r"
-        when '\t' then io << "\\t"
-        else
-          if c.ord < 0x20 || c.ord == 0x7f
-            io << "\\u" << c.ord.to_s(16).rjust(4, '0')
+    result = ""
+    tape do
+      result = ScratchWriter.build do |io|
+        io << '"'
+        value.each_char do |c|
+          case c
+          when '"'  then io << "\\\""
+          when '\\' then io << "\\\\"
+          when '\n' then io << "\\n"
+          when '\r' then io << "\\r"
+          when '\t' then io << "\\t"
           else
-            io << c
+            if c.ord < 0x20 || c.ord == 0x7f
+              io << "\\u" << c.ord.to_s(16).rjust(4, '0')
+            else
+              io << c
+            end
           end
         end
+        io << '"'
       end
-      io << '"'
     end
+    result
   end
 
   # `TOML::Any` is a wrapper around all possible TOML types
@@ -265,13 +275,15 @@ class Token
   end
 end
 
-class Lexer
+@[OnTape]
+struct Lexer
   getter token : Token
-  @chars : Array(Char)
+  @chars : Tape::Array(Char)
 
   def initialize(string : String)
-    @chars = string.chars
-    @chars << '\0'
+    @chars = Tape::Array(Char).new(string.bytesize + 1)
+    string.each_char { |char| @chars.push(char) }
+    @chars.push('\0')
     @pos = 0
     @token = Token.new
     @line_number = 1
@@ -387,7 +399,7 @@ class Lexer
   end
 
   private def consume_basic_string : Nil
-    @token.string_value = String.build do |io|
+    @token.string_value = ScratchWriter.build do |io|
       loop do
         case current_char
         when '"'
@@ -414,7 +426,7 @@ class Lexer
       next_char
     end
 
-    @token.string_value = String.build do |io|
+    @token.string_value = ScratchWriter.build do |io|
       loop do
         case current_char
         when '"'
@@ -478,7 +490,7 @@ class Lexer
   end
 
   private def consume_basic_literal_string : Nil
-    @token.string_value = String.build do |io|
+    @token.string_value = ScratchWriter.build do |io|
       io << current_char
       loop do
         case next_char
@@ -500,7 +512,7 @@ class Lexer
       next_char
     end
 
-    @token.string_value = String.build do |io|
+    @token.string_value = ScratchWriter.build do |io|
       loop do
         case current_char
         when '\''
@@ -528,7 +540,7 @@ class Lexer
     end
   end
 
-  private def consume_escape(io : String::Builder) : Nil
+  private def consume_escape(io : ScratchWriter) : Nil
     case current_char
     when 'b'
       io << '\b'
@@ -583,7 +595,7 @@ class Lexer
   end
 
   private def consume_math_constant(negative : Bool) : Nil
-    string = String.build do |io|
+    string = ScratchWriter.build do |io|
       while 'a' <= current_char && current_char <= 'z'
         io << current_char
         next_char
@@ -800,7 +812,7 @@ class Lexer
   end
 
   private def consume_key : Nil
-    @token.string_value = String.build do |io|
+    @token.string_value = ScratchWriter.build do |io|
       io << current_char
       while key_part?(next_char)
         io << current_char
@@ -857,7 +869,8 @@ class Lexer
   end
 end
 
-class Parser
+@[OnTape]
+struct Parser
   @names : Array(String)
 
   def initialize(string : String)
@@ -1174,5 +1187,50 @@ class Parser
 
   private def unexpected_token : NoReturn
     raise "unexpected token '#{token}'"
+  end
+end
+
+# Parser-local UTF-8 output. Only the completed owned String leaves the tape.
+@[OnTape]
+struct ScratchWriter
+  @writer : Tape::String::Writer
+
+  def initialize
+    @writer = Tape::String::Writer.new(32)
+  end
+
+  def <<(text : String) : ScratchWriter
+    @writer.append(text)
+    self
+  end
+
+  def <<(char : Char) : ScratchWriter
+    code = char.ord.to_u32
+    if code < 0x80
+      @writer.push(code.to_u8)
+    elsif code < 0x800
+      @writer.push((0xc0_u32 | (code >> 6)).to_u8)
+      @writer.push((0x80_u32 | (code & 0x3f)).to_u8)
+    elsif code < 0x10000
+      @writer.push((0xe0_u32 | (code >> 12)).to_u8)
+      @writer.push((0x80_u32 | ((code >> 6) & 0x3f)).to_u8)
+      @writer.push((0x80_u32 | (code & 0x3f)).to_u8)
+    else
+      @writer.push((0xf0_u32 | (code >> 18)).to_u8)
+      @writer.push((0x80_u32 | ((code >> 12) & 0x3f)).to_u8)
+      @writer.push((0x80_u32 | ((code >> 6) & 0x3f)).to_u8)
+      @writer.push((0x80_u32 | (code & 0x3f)).to_u8)
+    end
+    self
+  end
+
+  def finish : String
+    @writer.finish.to_heap
+  end
+
+  def self.build(& : ScratchWriter -> _) : String
+    writer = new
+    yield writer
+    writer.finish
   end
 end

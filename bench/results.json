@@ -1,0 +1,412 @@
+{
+  "build_dir": "/tmp/ris-toml-bench.k844nvl2",
+  "platform": "Linux-7.0.0-38-generic-x86_64-with-glibc2.43",
+  "compilers": {
+    "iyi": "iyi 0.17.0 (built on Crystal 1.22.0-dev [c8978396c] (2026-10-14))\n\nThe compiler was not built in release mode.",
+    "ris": "ris 0.1.0 (built on iyi 0.17.0, built on Crystal 1.22.0-dev [84dd9d46e] (2026-10-15))\n\nThe compiler was not built in release mode.",
+    "crystal": "Crystal 1.22.0-dev [22d715b02] (2026-10-09)\n\nLLVM: 21.1.8\nDefault target: x86_64-pc-linux-gnu"
+  },
+  "sources": {
+    "iyi-original": {
+      "toml.iyi": "39329b51c09f5119d44bf76ed641d649ec3f96977caed3b882101707b550dbbf"
+    },
+    "ris-control": {
+      "toml.ri": "39329b51c09f5119d44bf76ed641d649ec3f96977caed3b882101707b550dbbf"
+    },
+    "ris-tape": {
+      "toml.ri": "a482009acb8d4467997e0227f139769eee9bf9fbd626449113d50a136803e0cc"
+    },
+    "crystal-original": {
+      "original/src/toml/any.cr": "bc221a52d1b1332248abeb6d361522e3d97f5b91b0b75d3c1313ff63dbad0dcd",
+      "original/src/toml/lexer.cr": "6690ae51acb8f2d4bd19d25888e24b616404ebaba62fa06a7f0e8b5a9f79a687",
+      "original/src/toml/parse_exception.cr": "86ce3d597f5e70943e469280aaf032cade1531aebf189ae58ab4977d798388fd",
+      "original/src/toml/parser.cr": "c5e2c77abb494aed14dbbb59bcb6dc86ce97db9df55b91cc8eb671a727b21247",
+      "original/src/toml/token.cr": "9d72c4fadd3378461d417cb0a185a166957680fc5d142f5bd889f1de2711750b",
+      "original/src/toml.cr": "73c16c9fd4d7272f0f77e43f8fa7721fd19a81163433ce1cf072a6fb62e974a9"
+    }
+  },
+  "rounds": 3,
+  "workloads": {
+    "small": "title = \"Tere \u00f5\ud83d\ude00\"\nactive = true\nports = [8000, 8001]\n[owner]\nname = \"Priit\"\n",
+    "large": "[service.s0]\nname = \"Service 0 \u00f5\ud83d\ude00\"\nport = 8000\nactive = true\nvalues = [1, 2, 3, 4]\n[service.s1]\nname = \"Service 1 \u00f5\ud83d\ude00\"\nport = 8001\nactive = true\nvalues = [1, 2, 3, 4]\n[service.s2]\nname = \"Service 2 \u00f5\ud83d\ude00\"\nport = 8002\nactive = true\nvalues = [1, 2, 3, 4]\n[service.s3]\nname = \"Service 3 \u00f5\ud83d\ude00\"\nport = 8003\nactive = true\nvalues = [1, 2, 3, 4]\n[service.s4]\nname = \"Service 4 \u00f5\ud83d\ude00\"\nport = 8004\nactive = true\nvalues = [1, 2, 3, 4]\n[service.s5]\nname = \"Service 5 \u00f5\ud83d\ude00\"\nport = 8005\nactive = true\nvalues = [1, 2, 3, 4]\n[service.s6]\nname = \"Service 6 \u00f5\ud83d\ude00\"\nport = 8006\nactive = true\nvalues = [1, 2, 3, 4]\n[service.s7]\nname = \"Service 7 \u00f5\ud83d\ude00\"\nport = 8007\nactive = true\nvalues = [1, 2, 3, 4]\n[service.s8]\nname = \"Service 8 \u00f5\ud83d\ude00\"\nport = 8008\nactive = true\nvalues = [1, 2, 3, 4]\n[service.s9]\nname = \"Service 9 \u00f5\ud83d\ude00\"\nport = 8009\nactive = true\nvalues = [1, 2, 3, 4]\n[service.s10]\nname = \"Service 10 \u00f5\ud83d\ude00\"\nport = 8010\nactive = true\nvalues = [1, 2, 3, 4]\n[service.s11]\nname = \"Service 11 \u00f5\ud83d\ude00\"\nport = 8011\nactive = true\nvalues = [1, 2, 3, 4]\n[service.s12]\nname = \"Service 12 \u00f5\ud83d\ude00\"\nport = 8012\nactive = true\nvalues = [1, 2, 3, 4]\n[service.s13]\nname = \"Service 13 \u00f5\ud83d\ude00\"\nport = 8013\nactive = true\nvalues = [1, 2, 3, 4]\n[service.s14]\nname = \"Service 14 \u00f5\ud83d\ude00\"\nport = 8014\nactive = true\nvalues = [1, 2, 3, 4]\n[service.s15]\nname = \"Service 15 \u00f5\ud83d\ude00\"\nport = 8015\nactive = true\nvalues = [1, 2, 3, 4]\n[service.s16]\nname = \"Service 16 \u00f5\ud83d\ude00\"\nport = 8016\nactive = true\nvalues = [1, 2, 3, 4]\n[service.s17]\nname = \"Service 17 \u00f5\ud83d\ude00\"\nport = 8017\nactive = true\nvalues = [1, 2, 3, 4]\n[service.s18]\nname = \"Service 18 \u00f5\ud83d\ude00\"\nport = 8018\nactive = true\nvalues = [1, 2, 3, 4]\n[service.s19]\nname = \"Service 19 \u00f5\ud83d\ude00\"\nport = 8019\nactive = true\nvalues = [1, 2, 3, 4]\n[service.s20]\nname = \"Service 20 \u00f5\ud83d\ude00\"\nport = 8020\nactive = true\nvalues = [1, 2, 3, 4]\n[service.s21]\nname = \"Service 21 \u00f5\ud83d\ude00\"\nport = 8021\nactive = true\nvalues = [1, 2, 3, 4]\n[service.s22]\nname = \"Service 22 \u00f5\ud83d\ude00\"\nport = 8022\nactive = true\nvalues = [1, 2, 3, 4]\n[service.s23]\nname = \"Service 23 \u00f5\ud83d\ude00\"\nport = 8023\nactive = true\nvalues = [1, 2, 3, 4]\n[service.s24]\nname = \"Service 24 \u00f5\ud83d\ude00\"\nport = 8024\nactive = true\nvalues = [1, 2, 3, 4]\n[service.s25]\nname = \"Service 25 \u00f5\ud83d\ude00\"\nport = 8025\nactive = true\nvalues = [1, 2, 3, 4]\n[service.s26]\nname = \"Service 26 \u00f5\ud83d\ude00\"\nport = 8026\nactive = true\nvalues = [1, 2, 3, 4]\n[service.s27]\nname = \"Service 27 \u00f5\ud83d\ude00\"\nport = 8027\nactive = true\nvalues = [1, 2, 3, 4]\n[service.s28]\nname = \"Service 28 \u00f5\ud83d\ude00\"\nport = 8028\nactive = true\nvalues = [1, 2, 3, 4]\n[service.s29]\nname = \"Service 29 \u00f5\ud83d\ude00\"\nport = 8029\nactive = true\nvalues = [1, 2, 3, 4]\n[service.s30]\nname = \"Service 30 \u00f5\ud83d\ude00\"\nport = 8030\nactive = true\nvalues = [1, 2, 3, 4]\n[service.s31]\nname = \"Service 31 \u00f5\ud83d\ude00\"\nport = 8031\nactive = true\nvalues = [1, 2, 3, 4]\n[service.s32]\nname = \"Service 32 \u00f5\ud83d\ude00\"\nport = 8032\nactive = true\nvalues = [1, 2, 3, 4]\n[service.s33]\nname = \"Service 33 \u00f5\ud83d\ude00\"\nport = 8033\nactive = true\nvalues = [1, 2, 3, 4]\n[service.s34]\nname = \"Service 34 \u00f5\ud83d\ude00\"\nport = 8034\nactive = true\nvalues = [1, 2, 3, 4]\n[service.s35]\nname = \"Service 35 \u00f5\ud83d\ude00\"\nport = 8035\nactive = true\nvalues = [1, 2, 3, 4]\n[service.s36]\nname = \"Service 36 \u00f5\ud83d\ude00\"\nport = 8036\nactive = true\nvalues = [1, 2, 3, 4]\n[service.s37]\nname = \"Service 37 \u00f5\ud83d\ude00\"\nport = 8037\nactive = true\nvalues = [1, 2, 3, 4]\n[service.s38]\nname = \"Service 38 \u00f5\ud83d\ude00\"\nport = 8038\nactive = true\nvalues = [1, 2, 3, 4]\n[service.s39]\nname = \"Service 39 \u00f5\ud83d\ude00\"\nport = 8039\nactive = true\nvalues = [1, 2, 3, 4]\n[service.s40]\nname = \"Service 40 \u00f5\ud83d\ude00\"\nport = 8040\nactive = true\nvalues = [1, 2, 3, 4]\n[service.s41]\nname = \"Service 41 \u00f5\ud83d\ude00\"\nport = 8041\nactive = true\nvalues = [1, 2, 3, 4]\n[service.s42]\nname = \"Service 42 \u00f5\ud83d\ude00\"\nport = 8042\nactive = true\nvalues = [1, 2, 3, 4]\n[service.s43]\nname = \"Service 43 \u00f5\ud83d\ude00\"\nport = 8043\nactive = true\nvalues = [1, 2, 3, 4]\n[service.s44]\nname = \"Service 44 \u00f5\ud83d\ude00\"\nport = 8044\nactive = true\nvalues = [1, 2, 3, 4]\n[service.s45]\nname = \"Service 45 \u00f5\ud83d\ude00\"\nport = 8045\nactive = true\nvalues = [1, 2, 3, 4]\n[service.s46]\nname = \"Service 46 \u00f5\ud83d\ude00\"\nport = 8046\nactive = true\nvalues = [1, 2, 3, 4]\n[service.s47]\nname = \"Service 47 \u00f5\ud83d\ude00\"\nport = 8047\nactive = true\nvalues = [1, 2, 3, 4]\n[service.s48]\nname = \"Service 48 \u00f5\ud83d\ude00\"\nport = 8048\nactive = true\nvalues = [1, 2, 3, 4]\n[service.s49]\nname = \"Service 49 \u00f5\ud83d\ude00\"\nport = 8049\nactive = true\nvalues = [1, 2, 3, 4]\n[service.s50]\nname = \"Service 50 \u00f5\ud83d\ude00\"\nport = 8050\nactive = true\nvalues = [1, 2, 3, 4]\n[service.s51]\nname = \"Service 51 \u00f5\ud83d\ude00\"\nport = 8051\nactive = true\nvalues = [1, 2, 3, 4]\n[service.s52]\nname = \"Service 52 \u00f5\ud83d\ude00\"\nport = 8052\nactive = true\nvalues = [1, 2, 3, 4]\n[service.s53]\nname = \"Service 53 \u00f5\ud83d\ude00\"\nport = 8053\nactive = true\nvalues = [1, 2, 3, 4]\n[service.s54]\nname = \"Service 54 \u00f5\ud83d\ude00\"\nport = 8054\nactive = true\nvalues = [1, 2, 3, 4]\n[service.s55]\nname = \"Service 55 \u00f5\ud83d\ude00\"\nport = 8055\nactive = true\nvalues = [1, 2, 3, 4]\n[service.s56]\nname = \"Service 56 \u00f5\ud83d\ude00\"\nport = 8056\nactive = true\nvalues = [1, 2, 3, 4]\n[service.s57]\nname = \"Service 57 \u00f5\ud83d\ude00\"\nport = 8057\nactive = true\nvalues = [1, 2, 3, 4]\n[service.s58]\nname = \"Service 58 \u00f5\ud83d\ude00\"\nport = 8058\nactive = true\nvalues = [1, 2, 3, 4]\n[service.s59]\nname = \"Service 59 \u00f5\ud83d\ude00\"\nport = 8059\nactive = true\nvalues = [1, 2, 3, 4]\n[service.s60]\nname = \"Service 60 \u00f5\ud83d\ude00\"\nport = 8060\nactive = true\nvalues = [1, 2, 3, 4]\n[service.s61]\nname = \"Service 61 \u00f5\ud83d\ude00\"\nport = 8061\nactive = true\nvalues = [1, 2, 3, 4]\n[service.s62]\nname = \"Service 62 \u00f5\ud83d\ude00\"\nport = 8062\nactive = true\nvalues = [1, 2, 3, 4]\n[service.s63]\nname = \"Service 63 \u00f5\ud83d\ude00\"\nport = 8063\nactive = true\nvalues = [1, 2, 3, 4]\n[service.s64]\nname = \"Service 64 \u00f5\ud83d\ude00\"\nport = 8064\nactive = true\nvalues = [1, 2, 3, 4]\n[service.s65]\nname = \"Service 65 \u00f5\ud83d\ude00\"\nport = 8065\nactive = true\nvalues = [1, 2, 3, 4]\n[service.s66]\nname = \"Service 66 \u00f5\ud83d\ude00\"\nport = 8066\nactive = true\nvalues = [1, 2, 3, 4]\n[service.s67]\nname = \"Service 67 \u00f5\ud83d\ude00\"\nport = 8067\nactive = true\nvalues = [1, 2, 3, 4]\n[service.s68]\nname = \"Service 68 \u00f5\ud83d\ude00\"\nport = 8068\nactive = true\nvalues = [1, 2, 3, 4]\n[service.s69]\nname = \"Service 69 \u00f5\ud83d\ude00\"\nport = 8069\nactive = true\nvalues = [1, 2, 3, 4]\n[service.s70]\nname = \"Service 70 \u00f5\ud83d\ude00\"\nport = 8070\nactive = true\nvalues = [1, 2, 3, 4]\n[service.s71]\nname = \"Service 71 \u00f5\ud83d\ude00\"\nport = 8071\nactive = true\nvalues = [1, 2, 3, 4]\n[service.s72]\nname = \"Service 72 \u00f5\ud83d\ude00\"\nport = 8072\nactive = true\nvalues = [1, 2, 3, 4]\n[service.s73]\nname = \"Service 73 \u00f5\ud83d\ude00\"\nport = 8073\nactive = true\nvalues = [1, 2, 3, 4]\n[service.s74]\nname = \"Service 74 \u00f5\ud83d\ude00\"\nport = 8074\nactive = true\nvalues = [1, 2, 3, 4]\n[service.s75]\nname = \"Service 75 \u00f5\ud83d\ude00\"\nport = 8075\nactive = true\nvalues = [1, 2, 3, 4]\n[service.s76]\nname = \"Service 76 \u00f5\ud83d\ude00\"\nport = 8076\nactive = true\nvalues = [1, 2, 3, 4]\n[service.s77]\nname = \"Service 77 \u00f5\ud83d\ude00\"\nport = 8077\nactive = true\nvalues = [1, 2, 3, 4]\n[service.s78]\nname = \"Service 78 \u00f5\ud83d\ude00\"\nport = 8078\nactive = true\nvalues = [1, 2, 3, 4]\n[service.s79]\nname = \"Service 79 \u00f5\ud83d\ude00\"\nport = 8079\nactive = true\nvalues = [1, 2, 3, 4]\n[service.s80]\nname = \"Service 80 \u00f5\ud83d\ude00\"\nport = 8080\nactive = true\nvalues = [1, 2, 3, 4]\n[service.s81]\nname = \"Service 81 \u00f5\ud83d\ude00\"\nport = 8081\nactive = true\nvalues = [1, 2, 3, 4]\n[service.s82]\nname = \"Service 82 \u00f5\ud83d\ude00\"\nport = 8082\nactive = true\nvalues = [1, 2, 3, 4]\n[service.s83]\nname = \"Service 83 \u00f5\ud83d\ude00\"\nport = 8083\nactive = true\nvalues = [1, 2, 3, 4]\n[service.s84]\nname = \"Service 84 \u00f5\ud83d\ude00\"\nport = 8084\nactive = true\nvalues = [1, 2, 3, 4]\n[service.s85]\nname = \"Service 85 \u00f5\ud83d\ude00\"\nport = 8085\nactive = true\nvalues = [1, 2, 3, 4]\n[service.s86]\nname = \"Service 86 \u00f5\ud83d\ude00\"\nport = 8086\nactive = true\nvalues = [1, 2, 3, 4]\n[service.s87]\nname = \"Service 87 \u00f5\ud83d\ude00\"\nport = 8087\nactive = true\nvalues = [1, 2, 3, 4]\n[service.s88]\nname = \"Service 88 \u00f5\ud83d\ude00\"\nport = 8088\nactive = true\nvalues = [1, 2, 3, 4]\n[service.s89]\nname = \"Service 89 \u00f5\ud83d\ude00\"\nport = 8089\nactive = true\nvalues = [1, 2, 3, 4]\n[service.s90]\nname = \"Service 90 \u00f5\ud83d\ude00\"\nport = 8090\nactive = true\nvalues = [1, 2, 3, 4]\n[service.s91]\nname = \"Service 91 \u00f5\ud83d\ude00\"\nport = 8091\nactive = true\nvalues = [1, 2, 3, 4]\n[service.s92]\nname = \"Service 92 \u00f5\ud83d\ude00\"\nport = 8092\nactive = true\nvalues = [1, 2, 3, 4]\n[service.s93]\nname = \"Service 93 \u00f5\ud83d\ude00\"\nport = 8093\nactive = true\nvalues = [1, 2, 3, 4]\n[service.s94]\nname = \"Service 94 \u00f5\ud83d\ude00\"\nport = 8094\nactive = true\nvalues = [1, 2, 3, 4]\n[service.s95]\nname = \"Service 95 \u00f5\ud83d\ude00\"\nport = 8095\nactive = true\nvalues = [1, 2, 3, 4]\n[service.s96]\nname = \"Service 96 \u00f5\ud83d\ude00\"\nport = 8096\nactive = true\nvalues = [1, 2, 3, 4]\n[service.s97]\nname = \"Service 97 \u00f5\ud83d\ude00\"\nport = 8097\nactive = true\nvalues = [1, 2, 3, 4]\n[service.s98]\nname = \"Service 98 \u00f5\ud83d\ude00\"\nport = 8098\nactive = true\nvalues = [1, 2, 3, 4]\n[service.s99]\nname = \"Service 99 \u00f5\ud83d\ude00\"\nport = 8099\nactive = true\nvalues = [1, 2, 3, 4]\n"
+  },
+  "rows": [
+    {
+      "mode": "iyi-original",
+      "workload": "small",
+      "iterations": 50000,
+      "binary": "/tmp/ris-toml-bench.k844nvl2/iyi-original/main",
+      "input": "/tmp/ris-toml-bench.k844nvl2/small.toml",
+      "samples": [
+        {
+          "returncode": 0,
+          "stdout": "1036550000",
+          "stderr": "",
+          "wall_s": 0.1,
+          "user_s": 0.15,
+          "system_s": 0.01,
+          "peak_rss_kib": 6564.0
+        },
+        {
+          "returncode": 0,
+          "stdout": "1036550000",
+          "stderr": "",
+          "wall_s": 0.1,
+          "user_s": 0.15,
+          "system_s": 0.02,
+          "peak_rss_kib": 6592.0
+        },
+        {
+          "returncode": 0,
+          "stdout": "1036550000",
+          "stderr": "",
+          "wall_s": 0.11,
+          "user_s": 0.16,
+          "system_s": 0.02,
+          "peak_rss_kib": 6464.0
+        }
+      ],
+      "warmup": {
+        "returncode": 0,
+        "stdout": "1036550000",
+        "stderr": "",
+        "wall_s": 0.15,
+        "user_s": 0.21,
+        "system_s": 0.02,
+        "peak_rss_kib": 6440.0
+      },
+      "median_wall_s": 0.1,
+      "median_rss_kib": 6564.0
+    },
+    {
+      "mode": "iyi-original",
+      "workload": "large",
+      "iterations": 5000,
+      "binary": "/tmp/ris-toml-bench.k844nvl2/iyi-original/main",
+      "input": "/tmp/ris-toml-bench.k844nvl2/large.toml",
+      "samples": [
+        {
+          "returncode": 0,
+          "stdout": "6192715000",
+          "stderr": "",
+          "wall_s": 0.78,
+          "user_s": 1.41,
+          "system_s": 0.05,
+          "peak_rss_kib": 8392.0
+        },
+        {
+          "returncode": 0,
+          "stdout": "6192715000",
+          "stderr": "",
+          "wall_s": 0.81,
+          "user_s": 1.45,
+          "system_s": 0.02,
+          "peak_rss_kib": 8532.0
+        },
+        {
+          "returncode": 0,
+          "stdout": "6192715000",
+          "stderr": "",
+          "wall_s": 0.78,
+          "user_s": 1.42,
+          "system_s": 0.04,
+          "peak_rss_kib": 8740.0
+        }
+      ],
+      "warmup": {
+        "returncode": 0,
+        "stdout": "6192715000",
+        "stderr": "",
+        "wall_s": 0.91,
+        "user_s": 1.55,
+        "system_s": 0.05,
+        "peak_rss_kib": 8588.0
+      },
+      "median_wall_s": 0.78,
+      "median_rss_kib": 8532.0
+    },
+    {
+      "mode": "ris-control",
+      "workload": "small",
+      "iterations": 50000,
+      "binary": "/tmp/ris-toml-bench.k844nvl2/ris-control/main",
+      "input": "/tmp/ris-toml-bench.k844nvl2/small.toml",
+      "samples": [
+        {
+          "returncode": 0,
+          "stdout": "1036550000",
+          "stderr": "",
+          "wall_s": 0.1,
+          "user_s": 0.15,
+          "system_s": 0.01,
+          "peak_rss_kib": 6576.0
+        },
+        {
+          "returncode": 0,
+          "stdout": "1036550000",
+          "stderr": "",
+          "wall_s": 0.1,
+          "user_s": 0.14,
+          "system_s": 0.02,
+          "peak_rss_kib": 6464.0
+        },
+        {
+          "returncode": 0,
+          "stdout": "1036550000",
+          "stderr": "",
+          "wall_s": 0.1,
+          "user_s": 0.15,
+          "system_s": 0.02,
+          "peak_rss_kib": 6448.0
+        }
+      ],
+      "warmup": {
+        "returncode": 0,
+        "stdout": "1036550000",
+        "stderr": "",
+        "wall_s": 0.09,
+        "user_s": 0.15,
+        "system_s": 0.01,
+        "peak_rss_kib": 6560.0
+      },
+      "median_wall_s": 0.1,
+      "median_rss_kib": 6464.0
+    },
+    {
+      "mode": "ris-control",
+      "workload": "large",
+      "iterations": 5000,
+      "binary": "/tmp/ris-toml-bench.k844nvl2/ris-control/main",
+      "input": "/tmp/ris-toml-bench.k844nvl2/large.toml",
+      "samples": [
+        {
+          "returncode": 0,
+          "stdout": "6192715000",
+          "stderr": "",
+          "wall_s": 0.75,
+          "user_s": 1.38,
+          "system_s": 0.03,
+          "peak_rss_kib": 8428.0
+        },
+        {
+          "returncode": 0,
+          "stdout": "6192715000",
+          "stderr": "",
+          "wall_s": 0.75,
+          "user_s": 1.36,
+          "system_s": 0.03,
+          "peak_rss_kib": 8408.0
+        },
+        {
+          "returncode": 0,
+          "stdout": "6192715000",
+          "stderr": "",
+          "wall_s": 0.77,
+          "user_s": 1.41,
+          "system_s": 0.03,
+          "peak_rss_kib": 8320.0
+        }
+      ],
+      "warmup": {
+        "returncode": 0,
+        "stdout": "6192715000",
+        "stderr": "",
+        "wall_s": 0.73,
+        "user_s": 1.33,
+        "system_s": 0.04,
+        "peak_rss_kib": 8584.0
+      },
+      "median_wall_s": 0.75,
+      "median_rss_kib": 8408.0
+    },
+    {
+      "mode": "ris-tape",
+      "workload": "small",
+      "iterations": 50000,
+      "binary": "/tmp/ris-toml-bench.k844nvl2/ris-tape/main",
+      "input": "/tmp/ris-toml-bench.k844nvl2/small.toml",
+      "samples": [
+        {
+          "returncode": 0,
+          "stdout": "1036550000",
+          "stderr": "",
+          "wall_s": 0.08,
+          "user_s": 0.1,
+          "system_s": 0.01,
+          "peak_rss_kib": 6688.0
+        },
+        {
+          "returncode": 0,
+          "stdout": "1036550000",
+          "stderr": "",
+          "wall_s": 0.09,
+          "user_s": 0.1,
+          "system_s": 0.01,
+          "peak_rss_kib": 6688.0
+        },
+        {
+          "returncode": 0,
+          "stdout": "1036550000",
+          "stderr": "",
+          "wall_s": 0.09,
+          "user_s": 0.1,
+          "system_s": 0.01,
+          "peak_rss_kib": 6692.0
+        }
+      ],
+      "warmup": {
+        "returncode": 0,
+        "stdout": "1036550000",
+        "stderr": "",
+        "wall_s": 0.08,
+        "user_s": 0.1,
+        "system_s": 0.01,
+        "peak_rss_kib": 6612.0
+      },
+      "median_wall_s": 0.09,
+      "median_rss_kib": 6688.0
+    },
+    {
+      "mode": "ris-tape",
+      "workload": "large",
+      "iterations": 5000,
+      "binary": "/tmp/ris-toml-bench.k844nvl2/ris-tape/main",
+      "input": "/tmp/ris-toml-bench.k844nvl2/large.toml",
+      "samples": [
+        {
+          "returncode": 0,
+          "stdout": "6192715000",
+          "stderr": "",
+          "wall_s": 0.61,
+          "user_s": 0.86,
+          "system_s": 0.01,
+          "peak_rss_kib": 7472.0
+        },
+        {
+          "returncode": 0,
+          "stdout": "6192715000",
+          "stderr": "",
+          "wall_s": 0.61,
+          "user_s": 0.86,
+          "system_s": 0.01,
+          "peak_rss_kib": 7356.0
+        },
+        {
+          "returncode": 0,
+          "stdout": "6192715000",
+          "stderr": "",
+          "wall_s": 0.62,
+          "user_s": 0.87,
+          "system_s": 0.0,
+          "peak_rss_kib": 7352.0
+        }
+      ],
+      "warmup": {
+        "returncode": 0,
+        "stdout": "6192715000",
+        "stderr": "",
+        "wall_s": 0.59,
+        "user_s": 0.82,
+        "system_s": 0.01,
+        "peak_rss_kib": 7348.0
+      },
+      "median_wall_s": 0.61,
+      "median_rss_kib": 7356.0
+    },
+    {
+      "mode": "crystal-original",
+      "workload": "small",
+      "iterations": 50000,
+      "binary": "/tmp/ris-toml-bench.k844nvl2/crystal-original/main",
+      "input": "/tmp/ris-toml-bench.k844nvl2/small.toml",
+      "samples": [
+        {
+          "returncode": 0,
+          "stdout": "1036550000",
+          "stderr": "",
+          "wall_s": 0.79,
+          "user_s": 0.95,
+          "system_s": 0.23,
+          "peak_rss_kib": 4284.0
+        },
+        {
+          "returncode": 0,
+          "stdout": "1036550000",
+          "stderr": "",
+          "wall_s": 0.79,
+          "user_s": 0.97,
+          "system_s": 0.22,
+          "peak_rss_kib": 4344.0
+        },
+        {
+          "returncode": 0,
+          "stdout": "1036550000",
+          "stderr": "",
+          "wall_s": 0.81,
+          "user_s": 1.07,
+          "system_s": 0.15,
+          "peak_rss_kib": 4412.0
+        }
+      ],
+      "warmup": {
+        "returncode": 0,
+        "stdout": "1036550000",
+        "stderr": "",
+        "wall_s": 0.79,
+        "user_s": 1.01,
+        "system_s": 0.18,
+        "peak_rss_kib": 4288.0
+      },
+      "median_wall_s": 0.79,
+      "median_rss_kib": 4344.0
+    },
+    {
+      "mode": "crystal-original",
+      "workload": "large",
+      "iterations": 5000,
+      "binary": "/tmp/ris-toml-bench.k844nvl2/crystal-original/main",
+      "input": "/tmp/ris-toml-bench.k844nvl2/large.toml",
+      "samples": [
+        {
+          "returncode": 0,
+          "stdout": "6192715000",
+          "stderr": "",
+          "wall_s": 10.7,
+          "user_s": 12.85,
+          "system_s": 1.95,
+          "peak_rss_kib": 4684.0
+        },
+        {
+          "returncode": 0,
+          "stdout": "6192715000",
+          "stderr": "",
+          "wall_s": 10.67,
+          "user_s": 12.9,
+          "system_s": 1.86,
+          "peak_rss_kib": 4492.0
+        },
+        {
+          "returncode": 0,
+          "stdout": "6192715000",
+          "stderr": "",
+          "wall_s": 10.9,
+          "user_s": 13.18,
+          "system_s": 1.94,
+          "peak_rss_kib": 4412.0
+        }
+      ],
+      "warmup": {
+        "returncode": 0,
+        "stdout": "6192715000",
+        "stderr": "",
+        "wall_s": 10.53,
+        "user_s": 12.52,
+        "system_s": 2.13,
+        "peak_rss_kib": 4372.0
+      },
+      "median_wall_s": 10.7,
+      "median_rss_kib": 4492.0
+    }
+  ],
+  "failed": false
+}

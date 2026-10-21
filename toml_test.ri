@@ -7,6 +7,9 @@ module toml_test
 # lexer's test what the port adds and fixes.
 
 import toml::{TOML}
+import std/text
+import std/float
+import std/int
 import std/dir::{Dir}
 import std/json::{JSON, Any}
 import std/time::{Time}

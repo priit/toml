@@ -1,0 +1,38 @@
+module lifetime_test
+
+import toml::{TOML}
+import std/text
+import std/int
+import std/tuple
+
+retained = TOML.parse(%(name = "õ😀"\nvalues = [1, 2]\n[nested]\nkey = "value"))
+quoted = TOML.quote("õ😀\n\"\\")
+raise "parse left tape active" unless IyiRegion.tape == 0_u64
+100.times do
+  TOML.parse(%(overwrite = "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"))
+  TOML.quote("yyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyy")
+end
+raise "retained result changed" unless retained["name"].as_s == "õ😀" && retained["values"][1].as_i == 2 && retained["nested"]["key"].as_s == "value"
+raise "retained quote changed" unless TOML.parse("key = #{quoted}")["key"].as_s == "õ😀\n\"\\"
+
+# UTF-8 length boundaries, both literal input and escaped scalar output.
+expected = String.build do |io|
+  {0x80, 0x7ff, 0x800, 0xd7ff, 0xe000, 0xffff, 0x10000, 0x10ffff}.each { |code| io << code.chr }
+end
+text = "\u007f" + expected
+raise "UTF-8 roundtrip" unless TOML.parse("k = #{TOML.quote(text)}")["k"].as_s == text
+raise "escaped scalar roundtrip" unless TOML.parse(%(k = "\\u0080\\u07ff\\u0800\\uD7FF\\uE000\\uFFFF\\U00010000\\U0010FFFF"))["k"].as_s == expected
+long = "õ😀" * 4096
+raise "writer growth" unless TOML.parse("k = #{TOML.quote(long)}")["k"].as_s == long
+
+# Nested scope shares its caller's tape, but the returned table is owned.
+outer = TOML::Table.new
+tape do
+  before = Tape::String.build { |w| w.append("still alive") }
+  outer = TOML.parse(%(key = "nested"))
+  TOML.quote("another allocation")
+  raise "nested parse damaged outer tape" unless before == "still alive"
+end
+raise "nested result escaped incorrectly" unless outer["key"].as_s == "nested"
+raise "nested scope left tape active" unless IyiRegion.tape == 0_u64
+puts "PASS: retained values, UTF-8 boundaries, growth and nested scopes"
