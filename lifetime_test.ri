@@ -7,7 +7,6 @@ import std/tuple
 
 retained = TOML.parse(%(name = "õ😀"\nvalues = [1, 2]\n[nested]\nkey = "value"))
 quoted = TOML.quote("õ😀\n\"\\")
-raise "parse left tape active" unless IyiRegion.tape == 0_u64
 100.times do
   TOML.parse(%(overwrite = "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"))
   TOML.quote("yyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyy")
@@ -25,14 +24,15 @@ raise "escaped scalar roundtrip" unless TOML.parse(%(k = "\\u0080\\u07ff\\u0800\
 long = "õ😀" * 4096
 raise "writer growth" unless TOML.parse("k = #{TOML.quote(long)}")["k"].as_s == long
 
-# Nested scope shares its caller's tape, but the returned table is owned.
-outer = TOML::Table.new
+# Nested tape work preserves values retained by the enclosing scope.
+outer = TOML.parse(%(key = "outer"))
 tape do
-  before = Tape::String.build { |w| w.append("still alive") }
-  outer = TOML.parse(%(key = "nested"))
+  before = ""
+  before << "still alive"
+  nested = TOML.parse(%(key = "nested"))
   TOML.quote("another allocation")
+  raise "nested result" unless nested["key"].as_s == "nested"
   raise "nested parse damaged outer tape" unless before == "still alive"
 end
-raise "nested result escaped incorrectly" unless outer["key"].as_s == "nested"
-raise "nested scope left tape active" unless IyiRegion.tape == 0_u64
+raise "nested result escaped incorrectly" unless outer["key"].as_s == "outer"
 puts "PASS: retained values, UTF-8 boundaries, growth and nested scopes"

@@ -6,7 +6,7 @@
 #     toml["title"].as_s           # => "TOML Example"
 #     toml["owner"]["name"].as_s   # => "Lance"
 #
-# `TOML.parse` answers a `TOML::Table`, a `Hash(String, TOML::Any)`; a
+# `TOML.parse` answers a pooled `TOML::Table`; a
 # `TOML::Any` holds a Bool, Int64, Float64, String, Time, array or table.
 # Invalid TOML stops the program: `raise "TOML: … at line:column"`.
 #
@@ -27,45 +27,109 @@ import std/indexable
 import std/text
 import std/time::{Time}
 
+@[OnTape]
+struct Pair
+  getter key : String
+  getter value : TOML::Any
+
+  def initialize(@key : String, @value : TOML::Any)
+  end
+end
+
+@[OnTape]
+pub struct Fields
+  @pairs : SlicePool::List(Pair)
+
+  def initialize(pool : SlicePool(Pair?))
+    @pairs = SlicePool::List(Pair).new(pool)
+  end
+
+  def []?(key : String) : TOML::Any?
+    @pairs.each { |pair| return pair.value if pair.key == key }
+    nil
+  end
+
+  def [](key : String) : TOML::Any
+    self[key]? || raise "Missing hash key: #{key}"
+  end
+
+  def []=(key : String, value : TOML::Any) : TOML::Any
+    @pairs.size.times do |index|
+      if @pairs[index].key == key
+        @pairs[index] = Pair.new(key, value)
+        return value
+      end
+    end
+    @pairs << Pair.new(key, value)
+    value
+  end
+
+  def has_key?(key : String) : Bool
+    self[key]? != nil
+  end
+
+  def size : Int32
+    @pairs.size
+  end
+
+  def empty? : Bool
+    @pairs.empty?
+  end
+
+  def each(& : String, TOML::Any -> Nil) : Nil
+    @pairs.each { |pair| yield pair.key, pair.value }
+  end
+
+  def to_s : String
+    TOML::Any.new(self).to_s
+  end
+
+  def ==(other : Fields) : Bool
+    TOML::Any.new(self) == TOML::Any.new(other)
+  end
+
+  def keys : Array(String)
+    result = [] of String
+    @pairs.each { |pair| result << pair.key }
+    result
+  end
+end
+
 # Main entry point for TOML parsing.
 pub struct TOML
-  # A TOML Table. Just a convenience alias.
-  alias Table = Hash(String, TOML::Any)
+  # A TOML table backed by the parser's pool.
+  alias Table = ::Toml::Fields
 
-  # Owns its scratch scope; the returned tree contains only retained values.
+  # Builds the result in the caller's scope.
   def self.parse(input : String) : Table
-    result = Table.new
-    tape do
-      result = Parser.new(input).parse
-    end
-    result
+    TOML.parsed(Parser.new(input))
+  end
+
+  def self.parsed(parser : Parser) : Table
+    parser.parse
   end
 
   # A TOML basic string, "...", that `TOML.parse` reads back as *value*.
   def self.quote(value : String) : String
-    result = ""
-    tape do
-      result = ScratchWriter.build do |io|
-        io << '"'
-        value.each_char do |c|
-          case c
-          when '"'  then io << "\\\""
-          when '\\' then io << "\\\\"
-          when '\n' then io << "\\n"
-          when '\r' then io << "\\r"
-          when '\t' then io << "\\t"
-          else
-            if c.ord < 0x20 || c.ord == 0x7f
-              io << "\\u" << c.ord.to_s(16).rjust(4, '0')
-            else
-              io << c
-            end
-          end
+    text = ""
+    text << '"'
+    value.each_char do |c|
+      case c
+      when '"'  then text << "\\\""
+      when '\\' then text << "\\\\"
+      when '\n' then text << "\\n"
+      when '\r' then text << "\\r"
+      when '\t' then text << "\\t"
+      else
+        if c.ord < 0x20 || c.ord == 0x7f
+          text << "\\u" << c.ord.to_s(16).rjust(4, '0')
+        else
+          text << c
         end
-        io << '"'
       end
     end
-    result
+    text << '"'
+    text
   end
 
   # `TOML::Any` is a wrapper around all possible TOML types
@@ -79,9 +143,10 @@ pub struct TOML
   # underlying value and stop the program when it is another; the value is
   # not converted. Their nil-able variants (`#as_i?`, `#as_s?`, …) return
   # `nil` instead.
+  @[OnTape]
   pub struct Any
     # All possible TOML types.
-    alias Type = Bool | Int64 | Float64 | String | Time | Array(TOML::Any) | Hash(String, TOML::Any)
+    alias Type = Bool | Int64 | Float64 | String | Time | SlicePool::List(TOML::Any) | TOML::Table
 
     # Returns the raw underlying value.
     getter raw : Type
@@ -111,13 +176,13 @@ pub struct TOML
     # `string`, `datetime`, `array` or `table`.
     def kind : String
       case @raw
-      when Bool    then "bool"
-      when Int64   then "integer"
-      when Float64 then "float"
-      when String  then "string"
-      when Time    then "datetime"
-      when Array   then "array"
-      else              "table"
+      when Bool                       then "bool"
+      when Int64                      then "integer"
+      when Float64                    then "float"
+      when String                     then "string"
+      when Time                       then "datetime"
+      when SlicePool::List(TOML::Any) then "array"
+      else                                 "table"
       end
     end
 
@@ -125,8 +190,8 @@ pub struct TOML
     # size.
     def size : Int32
       case object = @raw
-      when Array(TOML::Any)        then object.size
-      when Hash(String, TOML::Any) then object.size
+      when SlicePool::List(TOML::Any) then object.size
+      when TOML::Table                then object.size
       else
         raise "Expected Array or Hash for #size, not #{kind}"
       end
@@ -135,13 +200,14 @@ pub struct TOML
     def [](index : Int32) : TOML::Any
       array = as_a?
       raise "Expected Array for #[](index : Int), not #{kind}" unless array
-      array[index]
+      array[index < 0 ? array.size + index : index]
     end
 
     def []?(index : Int32) : TOML::Any?
       array = as_a?
       raise "Expected Array for #[]?(index : Int), not #{kind}" unless array
-      array[index]?
+      at = index < 0 ? array.size + index : index
+      at >= 0 && at < array.size ? array[at] : nil
     end
 
     def [](key : String) : TOML::Any
@@ -213,34 +279,77 @@ pub struct TOML
       end
     end
 
-    def as_a : Array(TOML::Any)
+    def as_a : SlicePool::List(TOML::Any)
       as_a? || raise "as_a of a TOML #{kind}"
     end
 
-    def as_a? : Array(TOML::Any)?
+    def as_a? : SlicePool::List(TOML::Any)?
       case r = @raw
-      when Array(TOML::Any) then r
-      else                       nil
+      when SlicePool::List(TOML::Any) then r
+      else                                 nil
       end
     end
 
-    def as_h : Hash(String, TOML::Any)
+    def as_h : TOML::Table
       as_h? || raise "as_h of a TOML #{kind}"
     end
 
-    def as_h? : Hash(String, TOML::Any)?
+    def as_h? : TOML::Table?
       case r = @raw
-      when Hash(String, TOML::Any) then r
-      else                              nil
+      when TOML::Table then r
+      else                  nil
       end
     end
 
     def to_s : String
-      @raw.to_s
+      String.build { |io| write(io) }
+    end
+
+    def write(io : String::Builder) : Nil
+      if array = as_a?
+        io << "["
+        array.size.times do |index|
+          io << ", " unless index == 0
+          array[index].write(io)
+        end
+        io << "]"
+      elsif table = as_h?
+        io << "{"
+        index = 0
+        table.each do |key, value|
+          io << ", " unless index == 0
+          io << key.inspect << " => "
+          value.write(io)
+          index += 1
+        end
+        io << "}"
+      else
+        io << @raw.to_s
+      end
+      nil
     end
 
     def ==(other : TOML::Any) : Bool
-      raw == other.raw
+      if array = as_a?
+        right = other.as_a?
+        return false unless right
+        return false unless array.size == right.size
+        array.size.times do |index|
+          return false unless array[index] == right[index]
+        end
+        true
+      elsif table = as_h?
+        right = other.as_h?
+        return false unless right
+        return false unless table.size == right.size
+        table.each do |key, value|
+          found = right[key]?
+          return false unless found && value == found
+        end
+        true
+      else
+        raw == other.raw
+      end
     end
   end
 end
@@ -278,17 +387,31 @@ end
 @[OnTape]
 struct Lexer
   getter token : Token
-  @chars : Tape::Array(Char)
+  @input : String
+  @chars : Array(Char)
+  @text : String
 
   def initialize(string : String)
-    @chars = Tape::Array(Char).new(string.bytesize + 1)
-    string.each_char { |char| @chars.push(char) }
-    @chars.push('\0')
+    @text = ""
+    @chars = Array(Char).new(string.bytesize + 1)
+    @input = string
     @pos = 0
     @token = Token.new
     @line_number = 1
     @column_number = 1
     @before_eq_symbol = true
+  end
+
+  def prepare : Nil
+    @input.each_char { |char| @chars.push(char) }
+    @chars.push('\0')
+  end
+
+  def key_name : String
+    return @token.string_value unless @token.type == "INT"
+    mark = @text.bytesize
+    @text << @token.int_value.to_s
+    @text[mark, @text.bytesize - mark]
   end
 
   def next_token : Token
@@ -399,25 +522,25 @@ struct Lexer
   end
 
   private def consume_basic_string : Nil
-    @token.string_value = ScratchWriter.build do |io|
-      loop do
-        case current_char
-        when '"'
-          next_char
-          break
-        when '\\'
-          next_char
-          consume_escape(io)
-        when '\0'
-          raise "unterminated string literal"
-        when '\n'
-          raise "newline is not allowed in basic string"
-        else
-          io << current_char
-          next_char
-        end
+    mark = @text.bytesize
+    loop do
+      case current_char
+      when '"'
+        next_char
+        break
+      when '\\'
+        next_char
+        consume_escape
+      when '\0'
+        raise "unterminated string literal"
+      when '\n'
+        raise "newline is not allowed in basic string"
+      else
+        @text << current_char
+        next_char
       end
     end
+    @token.string_value = @text[mark, @text.bytesize - mark]
   end
 
   private def consume_multiline_basic_string : Nil
@@ -426,51 +549,51 @@ struct Lexer
       next_char
     end
 
-    @token.string_value = ScratchWriter.build do |io|
-      loop do
-        case current_char
-        when '"'
+    mark = @text.bytesize
+    loop do
+      case current_char
+      when '"'
+        if next_char == '"'
           if next_char == '"'
-            if next_char == '"'
-              next_char
-              break
-            else
-              io << "\"\""
-            end
-          else
-            io << '"'
-          end
-          next_char
-        when '\\'
-          if next_char == '\n'
-            newline
             next_char
-            loop do
-              case current_char
-              when ' ', '\t'
-                next_char
-              when '\n'
-                newline
-                next_char
-              else
-                break
-              end
-            end
+            break
           else
-            consume_escape(io)
+            @text << "\"\""
           end
-        when '\n'
-          newline
-          io << '\n'
-          next_char
-        when '\0'
-          raise "unterminated string literal"
         else
-          io << current_char
-          next_char
+          @text << '"'
         end
+        next_char
+      when '\\'
+        if next_char == '\n'
+          newline
+          next_char
+          loop do
+            case current_char
+            when ' ', '\t'
+              next_char
+            when '\n'
+              newline
+              next_char
+            else
+              break
+            end
+          end
+        else
+          consume_escape
+        end
+      when '\n'
+        newline
+        @text << '\n'
+        next_char
+      when '\0'
+        raise "unterminated string literal"
+      else
+        @text << current_char
+        next_char
       end
     end
+    @token.string_value = @text[mark, @text.bytesize - mark]
   end
 
   private def consume_literal_string : Nil
@@ -490,20 +613,20 @@ struct Lexer
   end
 
   private def consume_basic_literal_string : Nil
-    @token.string_value = ScratchWriter.build do |io|
-      io << current_char
-      loop do
-        case next_char
-        when '\''
-          next_char
-          break
-        when '\0'
-          raise "unterminated string literal"
-        else
-          io << current_char
-        end
+    mark = @text.bytesize
+    @text << current_char
+    loop do
+      case next_char
+      when '\''
+        next_char
+        break
+      when '\0'
+        raise "unterminated string literal"
+      else
+        @text << current_char
       end
     end
+    @token.string_value = @text[mark, @text.bytesize - mark]
   end
 
   private def consume_multiline_literal_string : Nil
@@ -512,54 +635,54 @@ struct Lexer
       next_char
     end
 
-    @token.string_value = ScratchWriter.build do |io|
-      loop do
-        case current_char
-        when '\''
+    mark = @text.bytesize
+    loop do
+      case current_char
+      when '\''
+        if next_char == '\''
           if next_char == '\''
-            if next_char == '\''
-              next_char
-              break
-            else
-              io << "''"
-            end
+            next_char
+            break
           else
-            io << '\''
-            io << current_char
+            @text << "''"
           end
-        when '\n'
-          newline
-          io << '\n'
-        when '\0'
-          raise "unterminated string literal"
         else
-          io << current_char
+          @text << '\''
+          @text << current_char
         end
-        next_char
+      when '\n'
+        newline
+        @text << '\n'
+      when '\0'
+        raise "unterminated string literal"
+      else
+        @text << current_char
       end
+      next_char
     end
+    @token.string_value = @text[mark, @text.bytesize - mark]
   end
 
-  private def consume_escape(io : ScratchWriter) : Nil
+  private def consume_escape : Nil
     case current_char
     when 'b'
-      io << '\b'
+      @text << '\b'
     when 't'
-      io << '\t'
+      @text << '\t'
     when 'n'
-      io << '\n'
+      @text << '\n'
     when 'f'
-      io << '\f'
+      @text << '\f'
     when 'r'
-      io << '\r'
+      @text << '\r'
     when 'u'
-      io << consume_unicode_scalar(4)
+      @text << consume_unicode_scalar(4)
       return
     when 'U'
-      io << consume_unicode_scalar(8)
+      @text << consume_unicode_scalar(8)
       return
     when '\\', '\'', '"'
-      io << current_char
+      @text << current_char
     else
       raise "unknown escape: \\#{current_char}"
     end
@@ -595,12 +718,12 @@ struct Lexer
   end
 
   private def consume_math_constant(negative : Bool) : Nil
-    string = ScratchWriter.build do |io|
-      while 'a' <= current_char && current_char <= 'z'
-        io << current_char
-        next_char
-      end
+    mark = @text.bytesize
+    while 'a' <= current_char && current_char <= 'z'
+      @text << current_char
+      next_char
     end
+    string = @text[mark, @text.bytesize - mark]
     process_math_constant(string)
 
     @token.float_value = -@token.float_value if negative
@@ -812,12 +935,12 @@ struct Lexer
   end
 
   private def consume_key : Nil
-    @token.string_value = ScratchWriter.build do |io|
-      io << current_char
-      while key_part?(next_char)
-        io << current_char
-      end
+    mark = @text.bytesize
+    @text << current_char
+    while key_part?(next_char)
+      @text << current_char
     end
+    @token.string_value = @text[mark, @text.bytesize - mark]
     @token.type = "KEY"
 
     # A key after `=` that is a math constant is a float.
@@ -872,15 +995,23 @@ end
 @[OnTape]
 struct Parser
   @names : Array(String)
+  @items : SlicePool(TOML::Any?)
+  @pairs : SlicePool(Pair?)
 
   def initialize(string : String)
     @lexer = Lexer.new(string)
     @names = [] of String
-    next_token
+    @items = SlicePool(TOML::Any?).new
+    @pairs = SlicePool(Pair?).new
   end
 
   def parse : TOML::Table
-    root_table = TOML::Table.new
+    parse_into(TOML::Table.new(@pairs))
+  end
+
+  def parse_into(root_table : TOML::Table) : TOML::Table
+    @lexer.prepare
+    next_token
     table = root_table
 
     loop do
@@ -930,7 +1061,7 @@ struct Parser
     loop do
       case token.type
       when "KEY", "STRING", "INT"
-        name = token.type == "INT" ? token.int_value.to_s : token.string_value
+        name = @lexer.key_name
         @names << name
         next_token
 
@@ -997,21 +1128,19 @@ struct Parser
       elsif raw = existing_value.as_a?
         raise "expected #{@names.join('.')} to be a Table, not #{existing_value}" unless has_more_names
 
-        if last_element = raw.last?
+        if last_element = (raw.empty? ? nil : raw[raw.size - 1])
           le_raw = last_element.as_h?
           raise "expected #{@names.join('.')} to be a Table of Array, not #{existing_value}" unless le_raw
           return le_raw
         end
-        new_table = TOML::Table.new
-        raw << TOML::Any.new(new_table)
-        return new_table
+        append_table(raw, TOML::Table.new(@pairs))
+        return raw[raw.size - 1].as_h
       end
       raise "expected #{@names.join('.')} to be a Table, not #{existing_value}"
     end
 
-    new_table = TOML::Table.new
-    table[name] = TOML::Any.new(new_table)
-    new_table
+    insert_table(table, name, TOML::Table.new(@pairs))
+    table[name].as_h
   end
 
   private def parse_table_header(root_table : TOML::Table) : TOML::Table
@@ -1042,11 +1171,10 @@ struct Parser
       raise "Cannot append to static array" if existing_value.static_array?
       if array = existing_value.as_a?
         if array.empty? || !has_more_names
-          new_table = TOML::Table.new
-          array << TOML::Any.new(new_table)
-          return new_table
+          append_table(array, TOML::Table.new(@pairs))
+          return array[array.size - 1].as_h
         end
-        last = array.last.as_h?
+        last = array[array.size - 1].as_h?
         raise "expected #{@names.join('.')} to be an Array of Table, not #{existing_value}" unless last
         return last
       elsif raw = existing_value.as_h?
@@ -1056,13 +1184,31 @@ struct Parser
       raise "expected #{@names.join('.')} to be an Array, not #{existing_value}"
     end
 
-    new_table = TOML::Table.new
-    if has_more_names
-      table[name] = TOML::Any.new(new_table)
+    insert_header(table, name, has_more_names, TOML::Table.new(@pairs))
+    child = table[name]
+    has_more_names ? child.as_h : child.as_a[0].as_h
+  end
+
+  private def append_table(array : SlicePool::List(TOML::Any),
+                           child : TOML::Table) : TOML::Table
+    array << TOML::Any.new(child)
+    child
+  end
+
+  private def insert_table(table : TOML::Table, name : String,
+                           child : TOML::Table) : TOML::Table
+    table[name] = TOML::Any.new(child)
+    child
+  end
+
+  private def insert_header(table : TOML::Table, name : String, more : Bool,
+                            child : TOML::Table) : TOML::Table
+    if more
+      table[name] = TOML::Any.new(child)
     else
-      table[name] = TOML::Any.new([TOML::Any.new(new_table)])
+      table[name] = TOML::Any.new(SlicePool::List(TOML::Any).new(@items, TOML::Any.new(child)))
     end
-    new_table
+    child
   end
 
   private def parse_header(table : TOML::Table, double_ending : Bool, & : TOML::Table, String, Bool -> TOML::Table) : TOML::Table
@@ -1071,7 +1217,7 @@ struct Parser
     loop do
       case token.type
       when "KEY", "STRING", "INT"
-        name = token.type == "INT" ? token.int_value.to_s : token.string_value
+        name = @lexer.key_name
         @names << name
         next_token
 
@@ -1106,10 +1252,10 @@ struct Parser
     unexpected_token
   end
 
-  private def parse_array : Array(TOML::Any)
+  private def parse_array : SlicePool::List(TOML::Any)
     next_token
 
-    ary = [] of TOML::Any
+    ary = SlicePool::List(TOML::Any).new(@items)
     previous_kind : String? = nil
 
     loop do
@@ -1148,9 +1294,11 @@ struct Parser
   end
 
   private def parse_inline_table : TOML::Table
-    next_token
+    fill_inline_table(TOML::Table.new(@pairs))
+  end
 
-    table = TOML::Table.new
+  private def fill_inline_table(table : TOML::Table) : TOML::Table
+    next_token
     loop do
       case token.type
       when "KEY", "STRING", "INT"
@@ -1187,50 +1335,5 @@ struct Parser
 
   private def unexpected_token : NoReturn
     raise "unexpected token '#{token}'"
-  end
-end
-
-# Parser-local UTF-8 output. Only the completed owned String leaves the tape.
-@[OnTape]
-struct ScratchWriter
-  @writer : Tape::String::Writer
-
-  def initialize
-    @writer = Tape::String::Writer.new(32)
-  end
-
-  def <<(text : String) : ScratchWriter
-    @writer.append(text)
-    self
-  end
-
-  def <<(char : Char) : ScratchWriter
-    code = char.ord.to_u32
-    if code < 0x80
-      @writer.push(code.to_u8)
-    elsif code < 0x800
-      @writer.push((0xc0_u32 | (code >> 6)).to_u8)
-      @writer.push((0x80_u32 | (code & 0x3f)).to_u8)
-    elsif code < 0x10000
-      @writer.push((0xe0_u32 | (code >> 12)).to_u8)
-      @writer.push((0x80_u32 | ((code >> 6) & 0x3f)).to_u8)
-      @writer.push((0x80_u32 | (code & 0x3f)).to_u8)
-    else
-      @writer.push((0xf0_u32 | (code >> 18)).to_u8)
-      @writer.push((0x80_u32 | ((code >> 12) & 0x3f)).to_u8)
-      @writer.push((0x80_u32 | ((code >> 6) & 0x3f)).to_u8)
-      @writer.push((0x80_u32 | (code & 0x3f)).to_u8)
-    end
-    self
-  end
-
-  def finish : String
-    @writer.finish.to_heap
-  end
-
-  def self.build(& : ScratchWriter -> _) : String
-    writer = new
-    yield writer
-    writer.finish
   end
 end

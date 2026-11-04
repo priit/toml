@@ -17,58 +17,97 @@ import std/time::{Time}
 FAILURES = [] of String
 
 def check(condition : Bool, message : String) : Nil
-  FAILURES << message unless condition
+  FAILURES << message.copy_to(Program.tape) unless condition
 end
 
 # A value as text that compares the way toml.cr's specs do: tables by key in
 # any order, integers apart from floats, a time as RFC 3339.
+def sorted_key(hash, index : Int32) : String
+  hash.keys.sorted[index]
+end
+
 def dump(value : TOML::Any) : String
+  String.build { |io| write_dump(value, io) }
+end
+
+def write_dump(value : TOML::Any, io : String::Builder) : Nil
   case raw = value.raw
-  when String then raw.inspect
-  when Time   then (raw.nanosecond == 0 ? raw.to_rfc3339 : raw.to_rfc3339(6)).inspect
-  when Array(TOML::Any)
-    "[" + raw.map { |item| dump(item) }.join(",") + "]"
-  when Hash(String, TOML::Any)
-    "{" + raw.keys.sorted.map { |key| "#{key.inspect}:#{dump(raw[key])}" }.join(",") + "}"
+  when String then io << raw.inspect
+  when Time
+    io << (raw.nanosecond == 0 ? raw.to_rfc3339 : raw.to_rfc3339(6)).inspect
+  when SlicePool::List(TOML::Any)
+    io << "["
+    raw.size.times do |index|
+      item = raw[index]
+      io << "," unless index == 0
+      write_dump(item, io)
+    end
+    io << "]"
+  when TOML::Table
+    io << "{"
+    raw.size.times do |index|
+      key = sorted_key(raw, index)
+      io << "," unless index == 0
+      io << key.inspect << ":"
+      write_dump(raw[key], io)
+    end
+    io << "}"
   else
-    raw.to_s
+    io << raw.to_s
   end
+  nil
 end
 
 def dump(value : TOML::Table) : String
   dump(TOML::Any.new(value))
 end
 
-# The same text for an expected value written as JSON.
+# Expected JSON and typed fixture values share the same recursive writer.
 def dump_json(value : Any) : String
-  if array = value.as_a?
-    "[" + array.map { |item| dump_json(item) }.join(",") + "]"
-  elsif hash = value.as_h?
-    "{" + hash.keys.sorted.map { |key| "#{key.inspect}:#{dump_json(hash[key])}" }.join(",") + "}"
-  elsif string = value.as_s?
-    string.inspect
-  else
-    value.to_json
-  end
+  String.build { |io| write_json(value, io, false) }
 end
 
-# The same text for a toml-test case: every value is {"type", "value"}.
 def dump_typed(value : Any) : String
-  if array = value.as_a?
-    return "[" + array.map { |item| dump_typed(item) }.join(",") + "]"
-  end
-  hash = value.as_h
-  if (type = hash["type"]?) && (typed = hash["value"]?) && hash.size == 2
-    case type.as_s
-    when "string"   then return typed.as_s.inspect
-    when "integer"  then return typed.as_s.to_i64.to_s
-    when "float"    then return typed.as_s.to_f.to_s
-    when "bool"     then return typed.as_s
-    when "datetime" then return typed.as_s.inspect
-    when "array"    then return dump_typed(typed)
+  String.build { |io| write_json(value, io, true) }
+end
+
+def json_array?(value : Any) : Bool
+  value.raw.is_a?(Array(Any))
+end
+
+def write_json(value : Any, io : String::Builder, typed : Bool) : Nil
+  if json_array?(value)
+    io << "["
+    value.size.times do |index|
+      io << "," unless index == 0
+      write_json(value[index], io, typed)
     end
+    io << "]"
+  elsif hash = value.as_h?
+    if typed && (type = hash["type"]?) && (item = hash["value"]?) && hash.size == 2
+      case type.as_s
+      when "string", "datetime" then io << item.as_s.inspect
+      when "integer"            then io << item.as_s.to_i64.to_s
+      when "float"              then io << item.as_s.to_f.to_s
+      when "bool"               then io << item.as_s
+      when "array"              then write_json(item, io, typed)
+      end
+    else
+      io << "{"
+      hash.size.times do |index|
+        key = sorted_key(hash, index)
+        io << "," unless index == 0
+        io << key.inspect << ":"
+        write_json(hash[key], io, typed)
+      end
+      io << "}"
+    end
+  elsif string = value.as_s?
+    io << string.inspect
+  else
+    io << value.to_json
   end
-  "{" + hash.keys.sorted.map { |key| "#{key.inspect}:#{dump_typed(hash[key])}" }.join(",") + "}"
+  nil
 end
 
 def it_parses(string : String, expected : String) : Nil
@@ -83,12 +122,13 @@ end
 
 # Invalid TOML stops the program with "TOML: …"; a task catches it here.
 def refusal(string : String) : String?
-  message = nil
+  message = ""
   group do |g|
     outcome = g.spawn { TOML.parse(string); 0 }.value
-    message = outcome.message.to_s if outcome.is_a?(Panicked)
+    message << outcome.message.to_s if outcome.is_a?(Panicked)
     0
   end
+  return nil if message.empty?
   message
 end
 
@@ -245,19 +285,61 @@ check(any["t"]["k"].as_i == 1 && any["t"]["x"]?.nil? && any["a"][5]?.nil? && any
 check(any["n"].kind == "integer" && any["t"].kind == "table" && any["a"] == TOML.parse("a = [1]")["a"], "kind, ==")
 check((refusal("a = 1\na = 2") || "") == "TOML: duplicated key: 'a' at 2:5", "refusal names line and column: #{refusal("a = 1\na = 2")}")
 
+# Pooled tables preserve content equality and key replacement.
+left = TOML.parse("a = [1, 2]\n[t]\nx = 3")
+right = TOML.parse("a = [1, 2]\n[t]\nx = 3")
+check(left == right, "pooled nested table equality")
+right["a"] = TOML::Any.new(4)
+check(left != right && right.size == 2, "pooled table replacement")
+negative = left["a"][-2]?
+check(left["a"][-1].as_i == 2 && (negative ? negative.as_i == 1 : false),
+  "negative array indexes")
+
+check(TOML.parse(%(a = ["x", "y"]))["a"].to_s == "[x, y]",
+  "array error display stays unchanged")
+check(TOML.parse(%(a = { x = "y" }))["a"].to_s == %({"x" => y}),
+  "table error display stays unchanged")
+
+# Read each fixture while its directory entry is live.
+def check_fixtures(path : String, valid : Bool) : Int32
+  count = 0
+  paths = [path]
+  text = ""
+  at = 0
+  while at < paths.size
+    current = paths[at]
+    directory = Dir.new(current)
+    directory.each_child do |name|
+      file = "#{current}/#{name}"
+      if name.ends_with?(".toml")
+        count += 1
+        if valid
+          actual = dump(TOML.parse(File.read(file)))
+          expected = File.read(file[0, file.size - 5] + ".json")
+          wanted = dump_typed(JSON.parse(expected))
+          check(actual == wanted, "valid case #{file}: #{actual}, not #{wanted}")
+        else
+          message = refusal(File.read(file))
+          check(!message.nil? && message.starts_with?("TOML: "),
+            "invalid case #{file}: #{message || "parsed"}")
+        end
+      elsif Dir.exists?(file)
+        mark = text.bytesize
+        text << file
+        paths << text[mark, text.bytesize - mark]
+      end
+    end
+    directory.close
+    at += 1
+  end
+  count
+end
+
 # spec/cases_spec.cr
-valid = Dir.glob("spec/valid/**/*.toml").sorted
-valid.each do |file|
-  actual = dump(TOML.parse(File.read(file)))
-  wanted = dump_typed(JSON.parse(File.read(file[0, file.size - 5] + ".json")))
-  check(actual == wanted, "parses valid case #{file}: #{actual}, not #{wanted}")
-end
-invalid = Dir.glob("spec/invalid/**/*.toml").sorted
-invalid.each do |file|
-  message = refusal(File.read(file))
-  check(!message.nil? && message.starts_with?("TOML: "), "raises on invalid case #{file}: #{message || "parsed"}")
-end
-check(valid.size == 39 && invalid.size == 51, "every case is found: #{valid.size} valid, #{invalid.size} invalid")
+valid = check_fixtures("spec/valid", true)
+invalid = check_fixtures("spec/invalid", false)
+check(valid == 39 && invalid == 51,
+  "every case is found: #{valid} valid, #{invalid} invalid")
 
 unless FAILURES.empty?
   FAILURES.each { |failure| STDERR.puts "FAIL: #{failure}" }

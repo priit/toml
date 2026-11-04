@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Build first, then compare the same owned TOML result in four implementations."""
+"""Build first, then compare the same TOML values in three implementations."""
 import argparse
 import hashlib
 import json
@@ -50,6 +50,8 @@ puts sum
 
 def main():
     ap = argparse.ArgumentParser(description=__doc__)
+    ap.add_argument('--control-ris', type=Path,
+                    help='older ris compiler for the unchanged heap control')
     ap.add_argument('--iterations', type=int, default=50000)
     ap.add_argument('--rounds', type=int, default=5)
     ap.add_argument('--reuse-build', type=Path, help='reuse binaries only after checking all generated sources')
@@ -74,12 +76,20 @@ def main():
     versions = {name: subprocess.check_output([name, '--version'], env=env, text=True).strip() for name in ('iyi', 'ris', 'crystal')}
     rows = []
     sources = {}
-    for mode in ('iyi-original', 'ris-control', 'ris-tape', 'crystal-original'):
+    modes = ['iyi-original', 'ris-tape', 'crystal-original']
+    if args.control_ris:
+        modes.insert(1, 'ris-control')
+        versions['ris-control'] = subprocess.check_output(
+            [str(args.control_ris.resolve()), '--version'], env=env,
+            text=True).strip()
+    for mode in modes:
         folder = build / mode
         folder.mkdir(exist_ok=True)
         crystal = mode == 'crystal-original'
         ext = '.cr' if crystal else ('.iyi' if mode == 'iyi-original' else '.ri')
         compiler = 'crystal' if crystal else ('iyi' if mode == 'iyi-original' else 'ris')
+        if mode == 'ris-control':
+            compiler = str(args.control_ris.resolve())
         if crystal:
             if not args.reuse_build:
                 shutil.copytree(ROOT / 'archive/crystal', folder / 'original')
@@ -91,14 +101,22 @@ def main():
             sources[mode] = {str(p.relative_to(folder)): hashlib.sha256(p.read_bytes()).hexdigest() for p in sorted((folder / 'original/src').rglob('*.cr'))}
         else:
             text = (ROOT / 'toml.ri').read_text() if mode == 'ris-tape' else (IYI / 'toml.iyi').read_text()
-            # Current compiler requires explicit providers; no parser logic changes.
+            # Add explicit providers without changing parser logic.
             if mode != 'ris-tape':
                 text = text.replace('import std/indexable', 'import std/int\nimport std/float\nimport std/indexable')
             stage(folder / ('toml' + ext), text)
             sources[mode] = {'toml' + ext: hashlib.sha256(text.encode()).hexdigest()}
             prefix = 'module benchmark\nimport toml::{TOML}\nimport std/text\nimport std/int\n'
         source = folder / ('main' + ext)
-        stage(source, prefix + (BODY if crystal else BODY.replace('ARGV', 'Program.args')))
+        body = BODY if crystal else BODY.replace('ARGV', 'Program.args')
+        if mode == 'ris-tape':
+            body = body.replace('Array(TOML::Any)',
+                                'SlicePool::List(TOML::Any)')
+            body = body.replace('Hash(String, TOML::Any)', 'TOML::Table')
+            stage(folder / 'main.ri', prefix + body)
+            subprocess.run(['ris', 'check', '-f', 'json', str(source)],
+                           cwd=folder, env=env, check=True)
+        stage(source, prefix + body)
         binary = folder / 'main'
         if args.reuse_build:
             if not binary.is_file() or binary.stat().st_mtime < source.stat().st_mtime:

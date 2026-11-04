@@ -23,11 +23,12 @@ python3 bench/run.py
 
 The checks also run retained-result, UTF-8, growth and nested-scope cases,
 then build and consume exported modules. Exported methods must be typed.
-`parse` and `quote` return owned values; tape is internal scratch memory.
-Never put borrowed strings or buffers into the returned heap tree.
+`parse` and `quote` build results in the caller's destination.
+Every def, loop round and block releases scratch; keep roots on their owner.
 Do not change `archive/crystal/` or the separate `iyis/toml` checkout.
 Benchmarks build everything before sequential, shuffled measurements and
-retain failed samples. Keep ris-control identical to the iyi parser logic.
+retain failed samples. The old heap control needs an older ris compiler;
+never change the separate iyi parser to make it compile on current ris.
 
 ## Rules
 

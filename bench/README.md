@@ -6,14 +6,15 @@ one warmup and five measured rounds. All release builds finish first;
 measurements run sequentially in a deterministic shuffled order.
 
 - `iyi-original`: the separate `iyis/toml` parser.
-- `ris-control`: that same parser and heap buffers with the ris compiler.
-- `ris-tape`: this port, with tape scratch and an owned result.
+- `ris-tape`: this port, with results built in the caller's scope.
 - `crystal-original`: the unchanged archived toml.cr 0.8.1 source.
 
-The iyi/control copies add explicit int/float imports required by today's
-compiler. No parser logic changes. The control separates compiler effects
-from the port's scratch representation changes; the latter include UTF-8
-writing and lexer/parser structs, so this is not a pure allocator benchmark.
+The iyi copy adds explicit int/float imports. Its parser logic is unchanged.
+Current ris cannot compile the old heap control, so new runs omit that mode
+rather than change the control's parser. To include the unchanged iyi
+parser as `ris-control`, pass `--control-ris /path/to/older/ris`.
+The historical four-way results
+below remain for reference and do not describe the current memory model.
 
 Inputs are prepared before timing. Every iteration parses the input and
 walks the entire resulting tree, adding key/string bytes and scalar values
@@ -21,7 +22,7 @@ to a checksum. Checksums must match across all modes, including warmups.
 Workloads use strings, integers, booleans, arrays and nested tables. They
 avoid known syntax/Unicode-escape differences in the archived Crystal code.
 The larger input has 100 service tables. This measures parse plus traversal
-of owned output, not configuration-file I/O or application throughput.
+of output, not configuration-file I/O or application throughput.
 
 `results.json` records inputs, iteration counts, source hashes, raw samples,
 stdout/stderr, exit codes, elapsed/user/system times and maximum RSS.

@@ -19,23 +19,20 @@ Use a local module checkout for now; this ris port has not been published.
 
 ## Memory and lifetime
 
-`parse(String) : TOML::Table` returns an owned `Hash(String, TOML::Any)`.
-Its keys, strings, nested tables and arrays remain valid after parsing.
-Configuration is commonly retained, so a borrowed tree would force callers
-to manage its lifetime or copy the entire tree before caching it.
+`parse(String) : TOML::Table` builds its result in the caller's scope.
+`quote(String) : String` grows a String there. String, Array and Hash are
+tape values; there is no heap or conversion step. Every def, loop round
+and block releases its scratch when it ends.
 
-Parsing opens `Tape.scope` internally. The decoded character array uses
-`TapeArray(Char)`; key/string assembly uses `TapeWriter` through a private
-UTF-8 writer. Only completed strings are copied into the owned result.
-The lexer and parser are `@[OnTape]` structs, so the compiler checks their
-scratch-data lifetime. The token and returned tree use ordinary memory.
-There is no intermediate heap tree that gets copied onto tape.
-
-`quote(String) : String` also uses a scoped tape writer and returns an
-independent string. No caller scope, conversion, or tape/heap API suffix is
-needed. Called inside another `Tape.scope`, these methods share that scope:
-scratch allocations are reclaimed when the outermost scope ends. Repeated
-parsing in a long outer scope therefore accumulates scratch memory.
+Recursive values use pooled handles, as in current `std/toml`.
+`TOML::Table` is an insertion-ordered table view with `[]`, `[]?`, `[]=`,
+`keys`, `each`, `size`, `empty?` and `has_key?`. Arrays returned by `as_a`
+are `SlicePool::List(TOML::Any)`, with indexing, `size`, `each` and `<<`.
+These replace the former concrete Hash and Array payloads because ris
+refuses runtime-sized collections containing growing recursive values.
+The parser's pools and text storage are built in the caller's destination;
+returned strings view that storage. Keep results in that scope. Use an
+explicit `copy_to(owner)` when a value must live longer.
 
 ## Values and errors
 
