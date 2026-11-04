@@ -14,8 +14,7 @@ puts config["database"]["ports"][0].as_i
 File.write("names.toml", "name = #{TOML.quote("say \"hi\"")}\n")
 ```
 
-Use a local module checkout for now; this ris port has not been published.
-`iyi.mod` supplies the module identity used by the ris toolchain.
+Add it to a project with `ris get github.com/priit/toml`.
 
 ## Memory and lifetime
 

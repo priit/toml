@@ -1,1 +1,1 @@
-module github.com/domify/toml
+module github.com/priit/toml
