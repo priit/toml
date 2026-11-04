@@ -6,7 +6,7 @@ The original Crystal source in `archive/crystal/` is unchanged; the git
 history retains the original authors and the iyi port.
 
 ```ris
-import toml::{TOML}
+import github.com/priit/toml::{TOML}
 
 config = TOML.parse(File.read("config.toml"))
 puts config["owner"]["name"].as_s
