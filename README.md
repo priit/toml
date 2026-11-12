@@ -1,5 +1,8 @@
 # TOML for ris
 
+> **Deprecated.** The ris standard library now supports TOML; use it
+> instead. This module is archived and no longer maintained.
+
 A TOML 0.5.0 parser ported from `iyis/toml`, originally
 [crystal-community/toml.cr 0.8.1](https://github.com/crystal-community/toml.cr).
 The original Crystal source in `archive/crystal/` is unchanged; the git
